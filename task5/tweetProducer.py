@@ -46,8 +46,8 @@ class ScreenNameStreamListener(tweepy.StreamListener):
                 textTweet = data["retweeted_status"]["extended_tweet"]["full_text"]
             else:
                 textTweet = data["retweeted_status"]["text"]
-            print('id: %s, screen_name: %s, textRetweet: %s' % (idTweet, screenName, textTweet))
-            producer.send(topic_name, value=str({"idTweet": idTweet, "screenName": screenName,
+            print('screen_name: %s, id: %s, textRetweet: %s' % (idTweet, screenName, textTweet))
+            producer.send(topic_name, value=str({"screenName": screenName, "idTweet": idTweet,
                                                  "textTweet": textTweet}).encode('utf-8'))
 
 

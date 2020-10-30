@@ -26,4 +26,5 @@ schema = StructType([StructField('ProdId', StringType(), False),
 fileDF = sc.read.load(path=INPUT_FILE, format="csv", schema=schema, header="false", inferSchema="false",
                       sep=",", nullValue="null", mode="DROPMALFORMED")
 
+print('Введенное слово для поиска: %s' % request)
 search = fileDF.filter(F.lower(fileDF.Name).like('%' + request.lower() + '%')).show()
