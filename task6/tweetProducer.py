@@ -42,16 +42,8 @@ class ScreenNameStreamListener(tweepy.StreamListener):
         if 'in_reply_to_status_id' in data and data['in_reply_to_status_id'] is not None:
             idTweet = data['in_reply_to_status_id']
             screenName = data['in_reply_to_screen_name']
-            # получение текста твита по Id
-            textTweet = api.statuses_lookup([idTweet])[0].text
-            if 'text' in data:
-                textComment = data["text"]
-            else:
-                textComment = ''
-            print('id: %s, screenName: %s, textTweet: %s, textComment: %s' % (idTweet, screenName, textTweet,
-                                                                              textComment))
-            producer.send(topic_name, value=str({"idTweet": idTweet, "screenName": screenName,
-                                                 "textTweet": textTweet}).encode('utf-8'))
+            print('id: %s, screenName: %s' % (idTweet, screenName))
+            producer.send(topic_name, value=str({"idTweet": idTweet, "screenName": screenName}).encode('utf-8'))
 
 
 """

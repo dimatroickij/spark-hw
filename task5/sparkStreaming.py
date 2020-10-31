@@ -22,9 +22,7 @@ def updateCountRetweets(currentCount, countState):
 
 
 def toJson(data):
-    tweet = ast.literal_eval(data[0])
-    tweet['countRetweets'] = data[1]
-    return tweet
+    return ast.literal_eval(data[0])
 
 
 schema = StructType([StructField('screenName', StringType(), False), StructField('idTweet', StringType(), False),
@@ -63,7 +61,6 @@ ssc.start()
 # Waiting for termination
 ssc.awaitTermination(1800)
 
-print("5 самых популярных твитов:")
 popularTweets = spark.read.load(path="/output/par*", format="json", schema=schema, header="false", inferSchema="false",
                                 nullValue="null", mode="DROPMALFORMED")
 popularTweets.show(5)
