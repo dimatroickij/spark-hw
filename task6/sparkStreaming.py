@@ -3,14 +3,14 @@ import ast
 import tweepy
 from pyspark import SparkContext
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import lit
+from pyspark.sql.functions import udf
 from pyspark.sql.types import StructType, StructField, StringType
 from pyspark.streaming import StreamingContext
 from pyspark.streaming.kafka import KafkaUtils
 
 SPARK_APP_NAME = "task6"
 SPARK_CHECKPOINT_TMP_DIR = "tmpTask6"
-SPARK_BATCH_INTERVAL = 10
+SPARK_BATCH_INTERVAL = 60
 SPARK_LOG_LEVEL = "OFF"
 
 KAFKA_BOOTSTRAP_SERVERS = "localhost:9092"
@@ -21,6 +21,10 @@ consumer_secret = "pTnNG2blaFzgcXDB5lXZHOJZjgB9yMYfsr5Z7LZp9hchMjplq9"
 access_token = "4196894355-pEokz8B36pgZogaPEHokkPOaY0AtRVkdSsP643d"
 access_secret = "aUJ5e89fYY7t2Jh2bciC6ZnzGdeeM8pWdou86OffKRChH"
 
+auth = tweepy.OAuthHandler(consumer_token, consumer_secret)
+auth.set_access_token(access_token, access_secret)
+api = tweepy.API(auth)
+
 
 def updateCountReply(currentCount, countState):
     if countState is None:
@@ -30,6 +34,12 @@ def updateCountReply(currentCount, countState):
 
 def toJson(data):
     return ast.literal_eval(data[0])
+
+
+@udf
+def addTextTweet(idTweet):
+    return api.statuses_lookup([idTweet])[0].text
+
 
 schema = StructType([StructField('screenName', StringType(), False), StructField('idTweet', StringType(), False)])
 
@@ -48,6 +58,7 @@ ssc.checkpoint(SPARK_CHECKPOINT_TMP_DIR)
 
 spark = SparkSession.builder.getOrCreate()
 
+
 # Create subscriber (consumer) to the Kafka topic
 kafkaStream = KafkaUtils.createDirectStream(ssc, topics=[KAFKA_TOPIC],
                                             kafkaParams={"bootstrap.servers": KAFKA_BOOTSTRAP_SERVERS})
@@ -57,26 +68,17 @@ countReplyPerMinutes = kafkaStream.map(lambda x: (x[1], 1)).reduceByKey(lambda x
 
 countReplyPerMinutes.map(lambda x: (ast.literal_eval(x[0])['idTweet'], x[1])).pprint()
 
-countReplyPerMinutes.foreachRDD(lambda x: x.map(toJson).toDF(schema).write.option("header", "true").format("json").mode("overwrite").save('/output2'))
+countReplyPerMinutes.foreachRDD(lambda x: x.map(toJson).toDF(schema).write.option("header", "true").format("json").
+                                mode("overwrite").save('/output'))
 
 # Start Spark Streaming
 ssc.start()
 
 # Waiting for termination
-ssc.awaitTermination(20)
+ssc.awaitTermination(1800)
 
 
-def addTextTweet(tweets):
-    textTweet = api.statuses_lookup([tweets])
-    print(tweets)
-    return lit('1')
-
-#
-auth = tweepy.OAuthHandler(consumer_token, consumer_secret)
-auth.set_access_token(access_token, access_secret)
-api = tweepy.API(auth)
-
-popularTweets = spark.read.load(path="/output2/par*", format="json", schema=schema, header="false", inferSchema="false",
+popularTweets = spark.read.load(path="/output/par*", format="json", schema=schema, header="false", inferSchema="false",
                                 nullValue="null", mode="DROPMALFORMED")
 
 popularTweets.limit(5).withColumn("textTweet", addTextTweet(popularTweets['idTweet'])).show()
